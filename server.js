@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * passo-server/index.js — Checkpoints 1d.4, 1d.5, 1d.6
+ * passo-server/server.js — Checkpoints 1d.4, 1d.5, 1d.6
  * ============================================================
  * Entry point for the PASSO Transport Fare API.
  *
@@ -13,8 +13,8 @@
 
 const express = require('express');
 
-const app  = express();
-const PORT = 4003;
+const app = express();
+const PORT = process.env.PORT || 4003;
 
 // ── Global middleware ────────────────────────────────────────
 
@@ -28,17 +28,10 @@ app.use((req, res, next) => {
 });
 
 // ── Routes ───────────────────────────────────────────────────
+// Central router which mounts resource routers from the backend
+const apiRouter = require('./routes');
 
-const faresRouter = require('./routes/fares');
-
-// Locality and vehicle-type lookups — mounted BEFORE /api/fares
-// so Express matches them before the /:id param route
-app.use('/api/localities',    faresRouter);   // re-uses router's /localities sub-path
-app.use('/api/vehicle-types', faresRouter);   // re-uses router's /vehicle-types sub-path
-app.use('/api/stats',         faresRouter);   // re-uses router's /stats sub-path
-
-// Main fares CRUD
-app.use('/api/fares', faresRouter);
+app.use('/api', apiRouter);
 
 // Root health-check
 app.get('/', (req, res) => {
