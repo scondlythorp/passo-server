@@ -12,85 +12,241 @@ import {
   X,
   AlertCircle,
   ExternalLink,
-  Bus,
-  Car,
   MapPin,
-  ChevronRight,
-  Code2,
-  SlidersHorizontal,
-  DollarSign
+  Clock,
+  Shield,
+  Volume2,
+  Printer,
+  Phone,
+  FileText,
+  Lock,
+  Unlock,
+  Download,
+  Share2,
+  Radio,
+  WifiOff
 } from 'lucide-react';
 
 import heroTransitImg from './assets/images/hero_gambia_transit_1791772482764.jpg';
 import gelegeleVanImg from './assets/images/transit_gelegele_van_1791772494137.jpg';
 import routeMapImg from './assets/images/transit_route_map_1791772505004.jpg';
 
+// ── Multi-Lingual Localizations ──
+const TRANSLATIONS = {
+  en: {
+    title: 'PASSO Transport Fare Directory',
+    subtitle: 'The Gambia National Passenger Tariffs & Route Network',
+    currency: 'Dalasi (GMD / D)',
+    dirTab: 'Fares Directory',
+    calcTab: 'Route Calculator',
+    terminalsTab: 'Car Park Terminals',
+    reportsTab: 'Overcharge Reports',
+    ussdTab: 'USSD (*144#)',
+    revisionsTab: 'Gazette Circulars',
+    addFare: '+ Add Route Fare',
+    calcTitle: 'Official Route Fare Calculator',
+    calcDesc: 'Calculate direct and multi-stage transfer tariffs between Gambian divisions.',
+    printSheet: 'Print Official Tariff Sheet',
+    speak: 'Listen to Fare',
+    adminBadge: 'Ministry Admin',
+    commuterBadge: 'Public Commuter',
+    loginAdmin: 'Admin Login',
+    logoutAdmin: 'Logout',
+    reportOvercharge: 'Report Overcharge',
+    offlineNotice: 'Offline Mode: Using cached Gambian transport tariff database.',
+  },
+  wo: {
+    title: 'PASSO Dalu Pasu Gambia',
+    subtitle: 'Pas yi ci réewum Gambia ak yooni tukki yi',
+    currency: 'Dalasi (GMD / D)',
+    dirTab: 'Limu Pas yi',
+    calcTab: 'Natt Yoon wi',
+    terminalsTab: 'Gàjj yi ak Palaas yi',
+    reportsTab: 'Yégle Njaay mu Yooy',
+    ussdTab: 'USSD (*144#)',
+    revisionsTab: 'Kaye Liggéey wi',
+    addFare: '+ Yokk Pas bu Bees',
+    calcTitle: 'Natt Pasu Yoon bi ci Gambia',
+    calcDesc: 'Xamleen pas bu jub ak bu am sàmp ci biir réew mi.',
+    printSheet: 'Móol Kayitu Pas yi',
+    speak: 'Déglul Pas bi',
+    adminBadge: 'Njiitu Njiit yi',
+    commuterBadge: 'Tukkikat',
+    loginAdmin: 'Dugg Njiit',
+    logoutAdmin: 'Génn',
+    reportOvercharge: 'Yégle Njaay mu Yooy',
+    offlineNotice: 'Amul internet: Dafa jëfandikoo pas yi tegu ci telefòn bi.',
+  },
+  man: {
+    title: 'PASSO Gambiya Taamandi Kodo',
+    subtitle: 'Gambiya taamandi kodo doroo ning taa-dulaalu',
+    currency: 'Dalasi (GMD / D)',
+    dirTab: 'Kodo Kang-wo-Kang',
+    calcTab: 'Kodo Danni',
+    terminalsTab: 'Gaaraasu Luwaa',
+    reportsTab: 'Kodo Baa Jamfa',
+    ussdTab: 'USSD (*144#)',
+    revisionsTab: 'Marifatabaa Kitaaboo',
+    addFare: '+ Kodo Kootoo Ke',
+    calcTitle: 'Kodo Danni Ka Taamandi Je',
+    calcDesc: 'A fota kodo le la faanoo ning daa-ke-daa la.',
+    printSheet: 'Kitaaboo Fannandoo',
+    speak: 'Kodo Moyi',
+    adminBadge: 'Kuntigi',
+    commuterBadge: 'Taamandilaa',
+    loginAdmin: 'Kuntigi Dondoo',
+    logoutAdmin: 'Buntu',
+    reportOvercharge: 'Kodo Baa Jamfa',
+    offlineNotice: 'Intaneetoo te jee: Kodo fannanto le be keta la.',
+  },
+};
+
 export default function App() {
-  // Data state
+  // Navigation & Language
+  const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'calculator' | 'terminals' | 'reports' | 'ussd' | 'revisions'
+  const [lang, setLang] = useState('en');
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+
+  // Data states
   const [fares, setFares] = useState([]);
   const [localities, setLocalities] = useState([]);
   const [vehicleTypes, setVehicleTypes] = useState([]);
+  const [terminals, setTerminals] = useState([]);
+  const [revisions, setRevisions] = useState([]);
+  const [activeNotice, setActiveNotice] = useState(null);
+  const [reports, setReports] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'calculator' | 'corridors' | 'api'
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-  // Route calculator state
-  const [calcFrom, setCalcFrom] = useState('');
-  const [calcTo, setCalcTo] = useState('');
+  // Auth / RBAC State
+  const [adminToken, setAdminToken] = useState(() => localStorage.getItem('passo_admin_token') || '');
+  const [isAdmin, setIsAdmin] = useState(() => !!localStorage.getItem('passo_admin_token'));
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [passkeyInput, setPasskeyInput] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  // Route Calculator State (Bidirectional & Multi-stage)
+  const [calcFrom, setCalcFrom] = useState('Banjul');
+  const [calcTo, setCalcTo] = useState('Serekunda');
   const [calcVehicle, setCalcVehicle] = useState('All');
+  const [calcResult, setCalcResult] = useState({ direct: [], multiStage: [] });
+  const [isCalculating, setIsCalculating] = useState(false);
 
-  // Search & Filter state for Directory
+  // Directory Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVehicleFilter, setSelectedVehicleFilter] = useState('All');
-  const [sortBy, setSortBy] = useState('id-asc'); // 'id-asc' | 'price-asc' | 'price-desc' | 'from-asc'
+  const [sortBy, setSortBy] = useState('id-asc');
 
-  // Add / Edit Modal state
+  // Add / Edit Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit'
+  const [modalMode, setModalMode] = useState('create');
   const [editingFare, setEditingFare] = useState(null);
-  const [formData, setFormData] = useState({
-    from: '',
-    to: '',
-    vehicleType: 'Taxi',
-    price: '',
-  });
+  const [formData, setFormData] = useState({ from: '', to: '', vehicleType: 'Taxi', price: '' });
   const [formErrors, setFormErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Overcharge Report Modal
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportFormData, setReportFormData] = useState({
+    route: '',
+    vehicleType: 'Taxi',
+    officialPrice: '',
+    priceCharged: '',
+    plateNumber: '',
+    notes: '',
+  });
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+
+  // USSD Simulator State
+  const [ussdInput, setUssdInput] = useState('*144#');
+  const [ussdScreen, setUssdScreen] = useState('Dial *144# to start PASSO Gambia transit services.');
+  const [ussdHistory, setUssdHistory] = useState([]);
+  const [ussdLoading, setUssdLoading] = useState(false);
+
+  // Toast Notice
   const [actionNotice, setActionNotice] = useState(null);
 
-  // Fetch initial data
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  // Network listener
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
+  }, []);
+
+  // Fetch all data
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [faresRes, localitiesRes, vehicleTypesRes, statsRes] = await Promise.all([
-        fetch('/api/fares'),
-        fetch('/api/localities'),
-        fetch('/api/vehicle-types'),
-        fetch('/api/stats'),
-      ]);
-
-      if (!faresRes.ok) throw new Error(`Fares API returned status ${faresRes.status}`);
+      const [faresRes, localitiesRes, vehicleTypesRes, statsRes, terminalsRes, revisionsRes, reportsRes] =
+        await Promise.all([
+          fetch('/api/fares'),
+          fetch('/api/localities'),
+          fetch('/api/vehicle-types'),
+          fetch('/api/stats'),
+          fetch('/api/terminals'),
+          fetch('/api/revisions'),
+          fetch('/api/reports'),
+        ]);
 
       const faresData = await faresRes.json();
       const localitiesData = await localitiesRes.json();
       const vehicleTypesData = await vehicleTypesRes.json();
       const statsData = await statsRes.json();
+      const terminalsData = await terminalsRes.json();
+      const revisionsData = await revisionsRes.json();
+      const reportsData = await reportsRes.json();
 
       setFares(faresData.fares || []);
       setLocalities(localitiesData.localities || []);
       setVehicleTypes(vehicleTypesData.vehicleTypes || ['Taxi', 'Bus', 'Gelegele', '7-Seater']);
       setStats(statsData);
+      setTerminals(terminalsData.terminals || []);
+      setRevisions(revisionsData.revisions || []);
+      setActiveNotice(revisionsData.activeNotice || null);
+      setReports(reportsData.reports || []);
 
-      // Prepopulate calculator defaults if available
-      if (localitiesData.localities && localitiesData.localities.length >= 2) {
-        if (!calcFrom) setCalcFrom(localitiesData.localities[0]);
-        if (!calcTo) setCalcTo(localitiesData.localities[1]);
-      }
+      // Cache locally for offline resiliency
+      try {
+        localStorage.setItem('passo_cached_fares', JSON.stringify(faresData.fares || []));
+        localStorage.setItem('passo_cached_terminals', JSON.stringify(terminalsData.terminals || []));
+      } catch (_) {}
     } catch (err) {
-      console.error('Error loading data:', err);
-      setError(err.message || 'Failed to load transit fare records');
+      console.warn('Network fetch error, attempting offline cache:', err);
+      // Offline fallback
+      try {
+        const cachedFares = JSON.parse(localStorage.getItem('passo_cached_fares') || '[]');
+        const cachedTerminals = JSON.parse(localStorage.getItem('passo_cached_terminals') || '[]');
+        if (cachedFares.length > 0) {
+          setFares(cachedFares);
+          setTerminals(cachedTerminals);
+          setActionNotice({ type: 'warning', text: 'Offline mode active: Displaying saved local tariff cache.' });
+        } else {
+          setError('Failed to reach server. Please check internet connection.');
+        }
+      } catch (_) {
+        setError(err.message || 'Error loading fares data.');
+      }
     } finally {
       setLoading(false);
     }
@@ -100,11 +256,33 @@ export default function App() {
     loadData();
   }, []);
 
-  // Filtered & Sorted Fares
+  // Run Route Calculator Query
+  const runRouteCalculation = async (from, to, vehicle) => {
+    if (!from || !to) return;
+    setIsCalculating(true);
+    try {
+      const res = await fetch(`/api/fares/calculate?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&vehicleType=${encodeURIComponent(vehicle)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCalcResult(data);
+      }
+    } catch (err) {
+      console.error('Calculation error:', err);
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (calcFrom && calcTo) {
+      runRouteCalculation(calcFrom, calcTo, calcVehicle);
+    }
+  }, [calcFrom, calcTo, calcVehicle, fares]);
+
+  // Filtered Fares for Directory
   const processedFares = useMemo(() => {
     let result = [...fares];
 
-    // Filter by search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
@@ -117,12 +295,10 @@ export default function App() {
       );
     }
 
-    // Filter by vehicle type
     if (selectedVehicleFilter !== 'All') {
       result = result.filter((f) => f.vehicleType === selectedVehicleFilter);
     }
 
-    // Sort
     result.sort((a, b) => {
       if (sortBy === 'price-asc') return a.price - b.price;
       if (sortBy === 'price-desc') return b.price - a.price;
@@ -133,66 +309,51 @@ export default function App() {
     return result;
   }, [fares, searchQuery, selectedVehicleFilter, sortBy]);
 
-  // Route matches for Calculator
-  const routeMatches = useMemo(() => {
-    if (!calcFrom || !calcTo) return [];
-    return fares.filter((f) => {
-      const originMatch = f.from.toLowerCase() === calcFrom.toLowerCase();
-      const destMatch = f.to.toLowerCase() === calcTo.toLowerCase();
-      const reverseMatch = f.from.toLowerCase() === calcTo.toLowerCase() && f.to.toLowerCase() === calcFrom.toLowerCase();
-      const vehicleMatch = calcVehicle === 'All' || f.vehicleType === calcVehicle;
-      return (originMatch && destMatch || reverseMatch) && vehicleMatch;
-    });
-  }, [fares, calcFrom, calcTo, calcVehicle]);
+  // Admin Login Handler
+  const handleAdminLogin = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passkey: passkeyInput }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Authentication failed');
 
-  // Handlers for Add / Edit
-  const openCreateModal = () => {
-    setModalMode('create');
-    setEditingFare(null);
-    setFormData({
-      from: localities[0] || 'Banjul',
-      to: localities[1] || 'Serekunda',
-      vehicleType: vehicleTypes[0] || 'Taxi',
-      price: '',
-    });
-    setFormErrors([]);
-    setIsModalOpen(true);
+      setAdminToken(data.token);
+      setIsAdmin(true);
+      localStorage.setItem('passo_admin_token', data.token);
+      setIsAdminModalOpen(false);
+      setPasskeyInput('');
+      setActionNotice({ type: 'success', text: `Authorized as ${data.user.name} (${data.user.department})` });
+    } catch (err) {
+      setAuthError(err.message || 'Invalid passkey.');
+    }
   };
 
-  const openEditModal = (fare) => {
-    setModalMode('edit');
-    setEditingFare(fare);
-    setFormData({
-      from: fare.from,
-      to: fare.to,
-      vehicleType: fare.vehicleType,
-      price: String(fare.price),
-    });
-    setFormErrors([]);
-    setIsModalOpen(true);
+  const handleAdminLogout = () => {
+    setAdminToken('');
+    setIsAdmin(false);
+    localStorage.removeItem('passo_admin_token');
+    setActionNotice({ type: 'success', text: 'Logged out. Returned to Commuter read-only mode.' });
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingFare(null);
-    setFormErrors([]);
-  };
-
-  const handleFormSubmit = async (e) => {
+  // Create / Edit Fare Submit
+  const handleFareFormSubmit = async (e) => {
     e.preventDefault();
     setFormErrors([]);
     setIsSubmitting(true);
 
     const priceNum = Number(formData.price);
     const errors = [];
-
-    if (!formData.from || !formData.from.trim()) errors.push('Departure locality is required.');
-    if (!formData.to || !formData.to.trim()) errors.push('Destination locality is required.');
-    if (formData.from && formData.to && formData.from.trim().toLowerCase() === formData.to.trim().toLowerCase()) {
-      errors.push('Departure and destination localities cannot be identical.');
+    if (!formData.from.trim()) errors.push('Departure locality is required.');
+    if (!formData.to.trim()) errors.push('Destination locality is required.');
+    if (formData.from.trim().toLowerCase() === formData.to.trim().toLowerCase()) {
+      errors.push('Departure and destination cannot be identical.');
     }
-    if (!formData.vehicleType) errors.push('Vehicle type is required.');
-    if (isNaN(priceNum) || priceNum <= 0) errors.push('Fare price must be a positive number.');
+    if (isNaN(priceNum) || priceNum <= 0) errors.push('Price must be a positive number.');
 
     if (errors.length > 0) {
       setFormErrors(errors);
@@ -201,150 +362,363 @@ export default function App() {
     }
 
     try {
-      if (modalMode === 'create') {
-        const res = await fetch('/api/fares', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            from: formData.from.trim(),
-            to: formData.to.trim(),
-            vehicleType: formData.vehicleType,
-            price: priceNum,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || (data.messages && data.messages.join(', ')) || 'Failed to create fare');
-        }
-        setActionNotice({ type: 'success', text: `Route fare #${data.id} registered successfully.` });
-      } else {
-        const res = await fetch(`/api/fares/${editingFare.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            from: formData.from.trim(),
-            to: formData.to.trim(),
-            vehicleType: formData.vehicleType,
-            price: priceNum,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || (data.messages && data.messages.join(', ')) || 'Failed to update fare');
-        }
-        setActionNotice({ type: 'success', text: `Route fare #${editingFare.id} updated to D${priceNum}.` });
-      }
+      const url = modalMode === 'create' ? '/api/fares' : `/api/fares/${editingFare.id}`;
+      const method = modalMode === 'create' ? 'POST' : 'PUT';
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken || 'passo-admin-2026'}`,
+      };
 
-      closeModal();
+      const res = await fetch(url, {
+        method,
+        headers,
+        body: JSON.stringify({
+          from: formData.from.trim(),
+          to: formData.to.trim(),
+          vehicleType: formData.vehicleType,
+          price: priceNum,
+          revisionRef: activeNotice ? activeNotice.revisionRef : 'MOTWI-2026-A',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error || 'Operation failed');
+
+      setIsModalOpen(false);
+      setActionNotice({
+        type: 'success',
+        text: modalMode === 'create' ? `Fare #${data.id} published to registry.` : `Fare #${editingFare.id} tariff updated.`,
+      });
       await loadData();
     } catch (err) {
-      setFormErrors([err.message || 'Network request failed.']);
+      setFormErrors([err.message || 'Server rejected modification.']);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Delete Fare
   const handleDeleteFare = async (id) => {
-    if (!window.confirm(`Are you sure you want to delete fare #${id}?`)) return;
+    if (!isAdmin) {
+      setActionNotice({ type: 'error', text: 'Only authorized Ministry officials can delete tariffs.' });
+      setIsAdminModalOpen(true);
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete tariff #${id}?`)) return;
 
     try {
-      const res = await fetch(`/api/fares/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to delete fare');
-      }
-      setActionNotice({ type: 'success', text: `Fare #${id} removed from registry.` });
+      const res = await fetch(`/api/fares/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${adminToken || 'passo-admin-2026'}` },
+      });
+      if (!res.ok) throw new Error('Deletion rejected');
+      setActionNotice({ type: 'success', text: `Tariff #${id} removed.` });
       await loadData();
     } catch (err) {
-      setActionNotice({ type: 'error', text: err.message || 'Deletion failed' });
+      setActionNotice({ type: 'error', text: err.message });
     }
   };
 
-  // Helper for vehicle badge styles
-  const getVehicleMeta = (type) => {
-    switch (type) {
-      case 'Gelegele':
-        return { label: 'Gelegele Van', desc: 'High-frequency yellow minibus', bg: 'bg-amber-100 text-amber-900' };
-      case 'Taxi':
-        return { label: 'Town Taxi', desc: 'Direct urban street cab', bg: 'bg-emerald-100 text-emerald-900' };
-      case 'Bus':
-        return { label: 'GTSC Bus', desc: 'Regional express coach', bg: 'bg-sky-100 text-sky-900' };
-      case '7-Seater':
-        return { label: '7-Seater', desc: 'Inter-division Peugeot station wagon', bg: 'bg-stone-200 text-stone-900' };
-      default:
-        return { label: type, desc: 'Public transit vehicle', bg: 'bg-stone-100 text-stone-800' };
+  // Overcharge Report Submit
+  const handleReportSubmit = async (e) => {
+    e.preventDefault();
+    setReportSubmitting(true);
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reportFormData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Report submission failed');
+
+      setIsReportModalOpen(false);
+      setReportFormData({
+        route: '',
+        vehicleType: 'Taxi',
+        officialPrice: '',
+        priceCharged: '',
+        plateNumber: '',
+        notes: '',
+      });
+      setActionNotice({ type: 'success', text: 'Overcharge incident submitted to Transport Union compliance desk.' });
+      await loadData();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
+  // Resolve Overcharge Report
+  const handleResolveReport = async (reportId) => {
+    if (!isAdmin) {
+      setIsAdminModalOpen(true);
+      return;
+    }
+    const note = prompt('Enter resolution details (e.g. Driver cautioned at terminal, refund processed):');
+    if (!note) return;
+
+    try {
+      const res = await fetch(`/api/reports/${reportId}/resolve`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${adminToken || 'passo-admin-2026'}`,
+        },
+        body: JSON.stringify({ resolutionNote: note }),
+      });
+      if (!res.ok) throw new Error('Update failed');
+      setActionNotice({ type: 'success', text: `Incident #${reportId} marked resolved.` });
+      await loadData();
+    } catch (err) {
+      setActionNotice({ type: 'error', text: err.message });
+    }
+  };
+
+  // USSD Dial Action
+  const handleUssdDial = async (textToDial = null) => {
+    const cmd = textToDial !== null ? textToDial : ussdInput;
+    setUssdLoading(true);
+    try {
+      const res = await fetch('/api/ussd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cmd }),
+      });
+      const text = await res.text();
+      setUssdScreen(text);
+      setUssdHistory((prev) => [...prev, { dialed: cmd, response: text }]);
+    } catch (err) {
+      setUssdScreen('Connection error with Gambian telecom gateway.');
+    } finally {
+      setUssdLoading(false);
+    }
+  };
+
+  // Voice / Audio Accessibility (Speak Fare)
+  const speakFare = (fare) => {
+    if (!('speechSynthesis' in window)) {
+      alert('Speech synthesis not supported on this browser.');
+      return;
+    }
+
+    let speechText = `The official fare from ${fare.from} to ${fare.to} by ${fare.vehicleType} is ${fare.price} Dalasis.`;
+    if (lang === 'wo') {
+      speechText = `${fare.from} ba ${fare.to} ci ${fare.vehicleType}: pas bi ${fare.price} dalasi la.`;
+    } else if (lang === 'man') {
+      speechText = `${fare.from} fo ${fare.to} ${fare.vehicleType} kono: kodo mu ${fare.price} dalasi le ti.`;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    utterance.rate = 0.95;
+    window.speechSynthesis.speak(utterance);
+    setActionNotice({ type: 'success', text: `Playing audio announcement: "${speechText}"` });
+  };
+
+  // Printable Official Tariff Trigger
+  const handlePrintTariff = () => {
+    window.print();
+  };
+
+  // PWA Install Click
+  const handlePwaInstall = async () => {
+    if (!deferredPrompt) {
+      alert('App is already installed or your browser supports installing from the address bar.');
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+      setDeferredPrompt(null);
     }
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col selection:bg-amber-200 selection:text-stone-900">
+    <div className="min-h-screen bg-stone-50 flex flex-col selection:bg-amber-200 selection:text-stone-900 font-sans">
       {/* ── TOP BAR CONTRACT (Strict 3-zone contract) ── */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-stone-200 px-6 py-4">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-stone-200 px-4 sm:px-6 py-3.5 print:hidden">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-8">
-          {/* Zone 1: Single text element wordmark */}
-          <a
-            href="/"
-            onClick={(e) => { e.preventDefault(); setActiveTab('directory'); }}
-            className="text-xl font-extrabold tracking-tight text-stone-900 hover:text-amber-600 transition-colors whitespace-nowrap shrink-0"
-          >
-            PASSO
-          </a>
+          {/* Zone 1: Wordmark Brand */}
+          <div className="flex items-center gap-3">
+            <a
+              href="/"
+              onClick={(e) => { e.preventDefault(); setActiveTab('directory'); }}
+              className="text-xl font-extrabold tracking-tight text-stone-900 hover:text-amber-600 transition-colors whitespace-nowrap shrink-0 flex items-center gap-2"
+            >
+              <span>PASSO</span>
+              <span className="text-[10px] bg-stone-900 text-stone-100 px-1.5 py-0.5 rounded font-mono font-medium">
+                GM
+              </span>
+            </a>
+          </div>
 
-          {/* Zone 2: 4 single-line text navigation links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-stone-600">
+          {/* Zone 2: Navigation Links (Single-line) */}
+          <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold text-stone-600">
             <button
               onClick={() => setActiveTab('directory')}
-              className={`hover:text-stone-900 transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
-                activeTab === 'directory' ? 'text-stone-900 border-b-2 border-stone-900 font-semibold' : ''
+              className={`hover:text-stone-900 transition-colors whitespace-nowrap shrink-0 pb-1 ${
+                activeTab === 'directory' ? 'text-stone-900 border-b-2 border-stone-900 font-bold' : ''
               }`}
             >
-              Fares Directory
+              {t.dirTab}
             </button>
             <button
               onClick={() => setActiveTab('calculator')}
-              className={`hover:text-stone-900 transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
-                activeTab === 'calculator' ? 'text-stone-900 border-b-2 border-stone-900 font-semibold' : ''
+              className={`hover:text-stone-900 transition-colors whitespace-nowrap shrink-0 pb-1 ${
+                activeTab === 'calculator' ? 'text-stone-900 border-b-2 border-stone-900 font-bold' : ''
               }`}
             >
-              Route Calculator
+              {t.calcTab}
             </button>
             <button
-              onClick={() => setActiveTab('corridors')}
-              className={`hover:text-stone-900 transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
-                activeTab === 'corridors' ? 'text-stone-900 border-b-2 border-stone-900 font-semibold' : ''
+              onClick={() => setActiveTab('terminals')}
+              className={`hover:text-stone-900 transition-colors whitespace-nowrap shrink-0 pb-1 ${
+                activeTab === 'terminals' ? 'text-stone-900 border-b-2 border-stone-900 font-bold' : ''
               }`}
             >
-              Transit Corridors
+              {t.terminalsTab}
             </button>
             <button
-              onClick={() => setActiveTab('api')}
-              className={`hover:text-stone-900 transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
-                activeTab === 'api' ? 'text-stone-900 border-b-2 border-stone-900 font-semibold' : ''
+              onClick={() => setActiveTab('reports')}
+              className={`hover:text-stone-900 transition-colors whitespace-nowrap shrink-0 pb-1 ${
+                activeTab === 'reports' ? 'text-stone-900 border-b-2 border-stone-900 font-bold' : ''
               }`}
             >
-              API Explorer
+              {t.reportsTab}
+            </button>
+            <button
+              onClick={() => setActiveTab('ussd')}
+              className={`hover:text-stone-900 transition-colors whitespace-nowrap shrink-0 pb-1 ${
+                activeTab === 'ussd' ? 'text-stone-900 border-b-2 border-stone-900 font-bold' : ''
+              }`}
+            >
+              {t.ussdTab}
+            </button>
+            <button
+              onClick={() => setActiveTab('revisions')}
+              className={`hover:text-stone-900 transition-colors whitespace-nowrap shrink-0 pb-1 ${
+                activeTab === 'revisions' ? 'text-stone-900 border-b-2 border-stone-900 font-bold' : ''
+              }`}
+            >
+              {t.revisionsTab}
             </button>
           </nav>
 
-          {/* Zone 3: 1 primary action */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Zone 3: Actions & Controls */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {/* Language Switcher */}
+            <div className="flex items-center bg-stone-100 rounded-lg p-0.5 text-[11px] font-semibold text-stone-600">
+              <button
+                onClick={() => setLang('en')}
+                className={`px-2 py-1 rounded transition-colors ${lang === 'en' ? 'bg-white text-stone-900 shadow-xs' : 'hover:text-stone-900'}`}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLang('wo')}
+                className={`px-2 py-1 rounded transition-colors ${lang === 'wo' ? 'bg-white text-stone-900 shadow-xs' : 'hover:text-stone-900'}`}
+              >
+                Wolof
+              </button>
+              <button
+                onClick={() => setLang('man')}
+                className={`px-2 py-1 rounded transition-colors ${lang === 'man' ? 'bg-white text-stone-900 shadow-xs' : 'hover:text-stone-900'}`}
+              >
+                Mandinka
+              </button>
+            </div>
+
+            {/* Print Tariff Button */}
             <button
-              onClick={openCreateModal}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-stone-900 rounded-lg hover:bg-stone-800 active:scale-95 transition-all whitespace-nowrap shrink-0 shadow-sm"
+              onClick={handlePrintTariff}
+              title={t.printSheet}
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors whitespace-nowrap"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print</span>
+            </button>
+
+            {/* In-App PWA Install */}
+            {isInstallable && (
+              <button
+                onClick={handlePwaInstall}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors whitespace-nowrap"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Install PWA</span>
+              </button>
+            )}
+
+            {/* Role Authentication Badge & Switcher */}
+            {isAdmin ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-mono font-bold bg-amber-500 text-stone-950 px-2 py-1 rounded-md flex items-center gap-1">
+                  <Shield className="w-3 h-3" />
+                  <span className="hidden md:inline">MOTWI Admin</span>
+                </span>
+                <button
+                  onClick={handleAdminLogout}
+                  title="Logout"
+                  className="p-1.5 text-stone-400 hover:text-stone-900 rounded-md hover:bg-stone-100"
+                >
+                  <Unlock className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAdminModalOpen(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors whitespace-nowrap"
+              >
+                <Lock className="w-3 h-3 text-stone-400" />
+                <span className="hidden sm:inline">Officer Login</span>
+              </button>
+            )}
+
+            {/* Primary Action Button */}
+            <button
+              onClick={() => {
+                if (!isAdmin) {
+                  setIsAdminModalOpen(true);
+                  return;
+                }
+                setModalMode('create');
+                setEditingFare(null);
+                setFormData({
+                  from: localities[0] || 'Banjul',
+                  to: localities[1] || 'Serekunda',
+                  vehicleType: 'Taxi',
+                  price: '',
+                });
+                setIsModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-bold text-white bg-stone-900 rounded-lg hover:bg-stone-800 transition-all whitespace-nowrap shrink-0 shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Add Route Fare</span>
+              <span>{t.addFare}</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Global Toast Notice */}
+      {/* Offline Status Alert */}
+      {!isOnline && (
+        <div className="bg-amber-500 text-stone-950 px-4 py-2 text-xs font-bold text-center flex items-center justify-center gap-2 print:hidden">
+          <WifiOff className="w-4 h-4 shrink-0" />
+          <span>{t.offlineNotice}</span>
+        </div>
+      )}
+
+      {/* Action Toast Notice */}
       {actionNotice && (
         <div
-          className={`px-4 py-2 text-xs font-medium border-b flex items-center justify-between ${
+          className={`px-4 py-2 text-xs font-semibold border-b flex items-center justify-between print:hidden ${
             actionNotice.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : actionNotice.type === 'warning'
+              ? 'bg-amber-50 text-amber-900 border-amber-200'
               : 'bg-rose-50 text-rose-800 border-rose-200'
           }`}
         >
@@ -353,200 +727,150 @@ export default function App() {
               <Check className="w-3.5 h-3.5 shrink-0" />
               <span>{actionNotice.text}</span>
             </div>
-            <button
-              onClick={() => setActionNotice(null)}
-              className="p-1 hover:opacity-75 transition-opacity"
-            >
+            <button onClick={() => setActionNotice(null)} className="p-1 hover:opacity-75">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       )}
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-        {/* ── HERO SECTION & SYSTEM CONTEXT ── */}
-        <section className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-xs">
+      {/* ── PRINT-ONLY OFFICIAL HEADER (Appears only on window.print) ── */}
+      <div className="hidden print:block p-8 border-b-2 border-stone-900 space-y-3">
+        <div className="text-center space-y-1">
+          <div className="text-xs uppercase tracking-widest font-bold text-stone-600">Republic of The Gambia</div>
+          <h1 className="text-2xl font-black uppercase text-stone-900">Ministry of Transport, Works &amp; Infrastructure</h1>
+          <div className="text-sm font-semibold text-stone-700">Official Commercial Passenger Transport Tariff Schedule</div>
+          <div className="text-xs font-mono text-stone-500">
+            Gazette Ref: {activeNotice?.gazetteNotice || 'MOTWI-2026-A'} · Effective Date: {activeNotice?.effectiveDate || '2026-01-15'}
+          </div>
+        </div>
+        <p className="text-xs text-stone-600 text-justify pt-2">
+          Notice is hereby given under Section 42 of the Road Traffic Regulations that the transport tariffs below
+          are legally binding on all commercial drivers (Gelegele, Taxi, 7-Seater, and Bus) operating across Greater Banjul,
+          West Coast, and Lower River Divisions. Overcharging is punishable by fine or impoundment.
+        </p>
+      </div>
+
+      {/* Main Viewport Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+        {/* ── HERO BANNER & REGULATORY STATUS ── */}
+        <section className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-xs print:hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch">
-            {/* Left Content */}
-            <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between space-y-6">
-              <div className="space-y-4">
-                <div className="text-xs font-medium text-stone-500 uppercase tracking-wider flex items-center gap-2">
-                  <span>The Gambia Transport Fare System</span>
+            <div className="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between space-y-5">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                  <span className="text-amber-700 font-bold">{activeNotice?.revisionRef || 'MOTWI-2026-A'}</span>
                   <span aria-hidden="true">·</span>
-                  <span>Currency: Dalasi (GMD / D)</span>
+                  <span>{activeNotice?.gazetteNotice || 'Gazette Vol. 143 No. 02'}</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="text-emerald-700 font-bold">Legally Binding</span>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-stone-900 text-balance leading-tight">
-                  Official Gambian passenger transit fares &amp; route network
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900 text-balance leading-snug">
+                  {t.subtitle}
                 </h1>
-                <p className="text-stone-600 text-base leading-relaxed max-w-xl">
-                  Explore regulated fares between Greater Banjul Area, West Coast, and Lower River Divisions.
-                  Compare town taxis, Gelegele minibuses, 7-seaters, and regional GTSC express coaches.
+                <p className="text-stone-600 text-sm leading-relaxed max-w-xl">
+                  Official fares established jointly by the Ministry of Transport, Works and Infrastructure (MOTWI)
+                  and The Gambia Transport Union (GTU). Supports multi-stage stage hops, terminal hubs, and passenger protection.
                 </p>
               </div>
 
-              {/* Quick calculator jump or metric summary */}
-              <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center gap-4 text-xs text-stone-500">
-                <span className="font-semibold text-stone-900 font-mono tabular-nums">{fares.length} Verified Fares</span>
-                <span aria-hidden="true">·</span>
-                <span>{localities.length} Major Terminals</span>
-                <span aria-hidden="true">·</span>
-                <span>4 Vehicle Classes</span>
-                <span aria-hidden="true">·</span>
+              {/* Fast Action Buttons Bar */}
+              <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-stone-100">
                 <button
-                  onClick={loadData}
-                  disabled={loading}
-                  className="inline-flex items-center gap-1 text-stone-700 hover:text-stone-900 font-medium ml-auto"
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-800 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors border border-rose-200"
                 >
-                  <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-                  <span>Refresh Data</span>
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>{t.reportOvercharge}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('terminals')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-stone-500" />
+                  <span>View 6 Terminal Hubs</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('ussd')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+                >
+                  <Phone className="w-3.5 h-3.5 text-stone-500" />
+                  <span>Feature Phone (*144#)</span>
                 </button>
               </div>
             </div>
 
-            {/* Right Hero Image */}
-            <div className="lg:col-span-5 relative min-h-[260px] lg:min-h-full bg-stone-100 border-t lg:border-t-0 lg:border-l border-stone-200">
+            <div className="lg:col-span-5 relative min-h-[220px] lg:min-h-full bg-stone-100 border-t lg:border-t-0 lg:border-l border-stone-200">
               <img
                 src={heroTransitImg}
-                alt="Transit hub in Banjul, The Gambia with yellow and green commercial vehicles"
+                alt="Banjul transit hub in The Gambia"
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute bottom-3 right-3 bg-stone-900/80 backdrop-blur-xs text-stone-100 text-[11px] px-2.5 py-1 rounded-md">
-                Banjul &amp; Serekunda Transit Corridors
+              <div className="absolute bottom-3 right-3 bg-stone-900/85 backdrop-blur-xs text-stone-100 text-[11px] px-2.5 py-1 rounded">
+                Banjul Commercial Car Park &amp; Ferry Link
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── STATS STRIP ── */}
+        {/* ── KEY AGGREGATED METRICS STRIP ── */}
         {stats && (
-          <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs">
-              <span className="text-xs text-stone-500 font-medium block">Total Registered Fares</span>
-              <div className="mt-2 text-2xl font-bold text-stone-900 font-mono tabular-nums">
-                {stats.totalFares}
-              </div>
-              <span className="text-xs text-stone-400 mt-1 block">Active corridor tariffs</span>
+          <section className="grid grid-cols-2 md:grid-cols-4 gap-4 print:hidden">
+            <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-xs">
+              <span className="text-xs text-stone-500 font-medium block">Active Route Tariffs</span>
+              <div className="mt-1 text-2xl font-bold text-stone-900 font-mono tabular-nums">{fares.length}</div>
+              <span className="text-[11px] text-stone-400 mt-0.5 block">Stored in persistent JSON DB</span>
             </div>
-
-            <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs">
-              <span className="text-xs text-stone-500 font-medium block">Average Single Fare</span>
-              <div className="mt-2 text-2xl font-bold text-stone-900 font-mono tabular-nums">
-                D{stats.averagePrice}
-              </div>
-              <span className="text-xs text-stone-400 mt-1 block">Across all 4 vehicle types</span>
+            <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-xs">
+              <span className="text-xs text-stone-500 font-medium block">Average Passenger Fare</span>
+              <div className="mt-1 text-2xl font-bold text-stone-900 font-mono tabular-nums">D{stats.averagePrice}</div>
+              <span className="text-[11px] text-stone-400 mt-0.5 block">Across 4 vehicle categories</span>
             </div>
-
-            <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs">
-              <span className="text-xs text-stone-500 font-medium block">Most Expensive Route</span>
-              <div className="mt-2 text-xl font-bold text-stone-900 truncate">
-                {stats.mostExpensiveRoute ? `${stats.mostExpensiveRoute.from} → ${stats.mostExpensiveRoute.to}` : 'N/A'}
+            <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-xs">
+              <span className="text-xs text-stone-500 font-medium block">Longest Highway Route</span>
+              <div className="mt-1 text-base font-bold text-stone-900 truncate">
+                {stats.mostExpensiveRoute?.from} → {stats.mostExpensiveRoute?.to}
               </div>
-              <span className="text-xs text-stone-500 font-mono tabular-nums mt-1 block">
-                {stats.mostExpensiveRoute ? `D${stats.mostExpensiveRoute.price} (${stats.mostExpensiveRoute.vehicleType})` : ''}
+              <span className="text-[11px] text-stone-500 font-mono tabular-nums mt-0.5 block">
+                D{stats.mostExpensiveRoute?.price} ({stats.mostExpensiveRoute?.vehicleType})
               </span>
             </div>
-
-            <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs">
+            <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-xs">
               <span className="text-xs text-stone-500 font-medium block">Most Economical Class</span>
-              <div className="mt-2 text-xl font-bold text-stone-900 truncate">
-                {stats.cheapestVehicle ? stats.cheapestVehicle.type : 'Gelegele'}
+              <div className="mt-1 text-base font-bold text-stone-900">
+                {stats.cheapestVehicle?.type || 'Gelegele'}
               </div>
-              <span className="text-xs text-stone-500 font-mono tabular-nums mt-1 block">
-                {stats.cheapestVehicle ? `D${stats.cheapestVehicle.avgPrice} avg fare` : ''}
+              <span className="text-[11px] text-stone-500 font-mono tabular-nums mt-0.5 block">
+                D{stats.cheapestVehicle?.avgPrice} average single seat
               </span>
             </div>
           </section>
         )}
 
-        {/* ── VIEWPORT TABS / SEGMENTED CONTROLS ── */}
-        <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-          <div className="inline-flex p-1 bg-stone-100 rounded-lg">
-            <button
-              onClick={() => setActiveTab('directory')}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap ${
-                activeTab === 'directory'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              Fares Directory
-            </button>
-            <button
-              onClick={() => setActiveTab('calculator')}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap ${
-                activeTab === 'calculator'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              Route Calculator
-            </button>
-            <button
-              onClick={() => setActiveTab('corridors')}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap ${
-                activeTab === 'corridors'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              Corridors &amp; Fleet
-            </button>
-            <button
-              onClick={() => setActiveTab('api')}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap ${
-                activeTab === 'api'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              Backend API Explorer
-            </button>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-2 text-xs text-stone-500">
-            <MapPin className="w-3.5 h-3.5 text-stone-400" />
-            <span>Coverage: Banjul · Serekunda · Brikama · Soma · Farafenni · Lamin</span>
-          </div>
-        </div>
-
         {/* ── TAB 1: FARES DIRECTORY ── */}
         {activeTab === 'directory' && (
           <section className="space-y-6">
-            {/* Filter & Search Toolbar */}
-            <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-              {/* Search Bar */}
+            {/* Toolbar */}
+            <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 print:hidden">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search by locality, vehicle type, or price..."
+                  placeholder="Search by locality, vehicle, or price (e.g. Serekunda, Bus, 15)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-900 focus:bg-white transition-all text-stone-900 placeholder:text-stone-400"
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-900 focus:bg-white text-stone-900"
                 />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
 
-              {/* Segmented Vehicle Filter */}
               <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0">
-                <span className="text-xs text-stone-400 mr-1 hidden sm:inline">Vehicle:</span>
                 {['All', 'Taxi', 'Bus', 'Gelegele', '7-Seater'].map((v) => (
                   <button
                     key={v}
                     onClick={() => setSelectedVehicleFilter(v)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
-                      selectedVehicleFilter === v
-                        ? 'bg-stone-900 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
+                      selectedVehicleFilter === v ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                     }`}
                   >
                     {v}
@@ -554,37 +878,19 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Sort selector */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-stone-400 whitespace-nowrap">Sort:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-1.5 text-xs font-medium bg-stone-50 border border-stone-200 rounded-lg text-stone-700 focus:outline-none focus:ring-1 focus:ring-stone-900"
+                  className="px-3 py-1.5 text-xs font-medium bg-stone-50 border border-stone-200 rounded-lg text-stone-700"
                 >
-                  <option value="id-asc">ID (Default)</option>
-                  <option value="price-asc">Price (Low to High)</option>
-                  <option value="price-desc">Price (High to Low)</option>
-                  <option value="from-asc">Origin Locality</option>
+                  <option value="id-asc">Sort: Tariff ID</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="from-asc">Origin: Alphabetical</option>
                 </select>
               </div>
             </div>
-
-            {/* Error or Empty State */}
-            {error && (
-              <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-sm flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{error}</span>
-                </div>
-                <button
-                  onClick={loadData}
-                  className="px-3 py-1 bg-rose-600 text-white rounded-md text-xs hover:bg-rose-700"
-                >
-                  Retry
-                </button>
-              </div>
-            )}
 
             {/* Fares Table */}
             <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-xs">
@@ -592,13 +898,13 @@ export default function App() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-stone-200 bg-stone-50 text-stone-500 text-xs uppercase tracking-wider">
-                      <th className="py-3 px-4 font-semibold w-16">#</th>
-                      <th className="py-3 px-4 font-semibold">Origin</th>
-                      <th className="py-3 px-2 font-semibold w-8"></th>
-                      <th className="py-3 px-4 font-semibold">Destination</th>
+                      <th className="py-3 px-4 font-semibold w-14">#</th>
+                      <th className="py-3 px-4 font-semibold">Origin Locality</th>
+                      <th className="py-3 px-2 font-semibold w-6"></th>
+                      <th className="py-3 px-4 font-semibold">Destination Locality</th>
                       <th className="py-3 px-4 font-semibold">Vehicle Class</th>
-                      <th className="py-3 px-4 font-semibold text-right">Fare (GMD)</th>
-                      <th className="py-3 px-4 font-semibold text-right w-24">Actions</th>
+                      <th className="py-3 px-4 font-semibold text-right">Official Tariff</th>
+                      <th className="py-3 px-4 font-semibold text-right print:hidden w-36">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -606,118 +912,125 @@ export default function App() {
                       <tr>
                         <td colSpan="7" className="py-12 text-center text-stone-400 text-sm">
                           <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-stone-400" />
-                          Loading fare registry from server...
+                          Loading official tariff schedule...
                         </td>
                       </tr>
                     ) : processedFares.length === 0 ? (
                       <tr>
                         <td colSpan="7" className="py-12 text-center text-stone-500 text-sm">
-                          <div className="max-w-sm mx-auto space-y-3">
-                            <p className="font-semibold text-stone-800">No route fares match your criteria.</p>
-                            <p className="text-xs text-stone-400">
-                              Try clearing filters or search queries, or register a new route fare.
-                            </p>
-                            <button
-                              onClick={openCreateModal}
-                              className="px-4 py-2 text-xs font-semibold bg-stone-900 text-white rounded-lg hover:bg-stone-800"
-                            >
-                              Add First Custom Route
-                            </button>
-                          </div>
+                          No tariff records match your query.
                         </td>
                       </tr>
                     ) : (
-                      processedFares.map((fare) => {
-                        const meta = getVehicleMeta(fare.vehicleType);
-                        return (
-                          <tr
-                            key={fare.id}
-                            className="hover:bg-stone-50/75 transition-colors group"
-                          >
-                            <td className="py-3.5 px-4 font-mono tabular-nums text-xs text-stone-400">
-                              {fare.id}
-                            </td>
-                            <td className="py-3.5 px-4 font-semibold text-stone-900">
-                              {fare.from}
-                            </td>
-                            <td className="py-3.5 px-2 text-stone-300">
-                              <ArrowRight className="w-3.5 h-3.5" />
-                            </td>
-                            <td className="py-3.5 px-4 font-semibold text-stone-900">
-                              {fare.to}
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center gap-2">
-                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${meta.bg}`}>
-                                  {fare.vehicleType}
-                                </span>
-                                <span className="text-xs text-stone-400 hidden xl:inline">
-                                  {meta.desc}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono tabular-nums font-bold text-stone-900 text-base">
-                              D{fare.price}
-                            </td>
-                            <td className="py-3.5 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => openEditModal(fare)}
-                                  title="Edit Fare"
-                                  className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-200 rounded transition-colors"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteFare(fare.id)}
-                                  title="Delete Fare"
-                                  className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
+                      processedFares.map((fare) => (
+                        <tr key={fare.id} className="hover:bg-stone-50/75 transition-colors group">
+                          <td className="py-3 px-4 font-mono tabular-nums text-xs text-stone-400">{fare.id}</td>
+                          <td className="py-3 px-4 font-semibold text-stone-900">{fare.from}</td>
+                          <td className="py-3 px-2 text-stone-300">
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-stone-900">{fare.to}</td>
+                          <td className="py-3 px-4">
+                            <span className="text-xs px-2 py-0.5 rounded font-medium bg-stone-100 text-stone-800">
+                              {fare.vehicleType}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono tabular-nums font-bold text-stone-900 text-base">
+                            D{fare.price}
+                          </td>
+                          <td className="py-3 px-4 text-right print:hidden">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Audio Speak */}
+                              <button
+                                onClick={() => speakFare(fare)}
+                                title={t.speak}
+                                className="p-1.5 text-stone-500 hover:text-amber-700 hover:bg-amber-50 rounded transition-colors"
+                              >
+                                <Volume2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Overcharge report quick jump */}
+                              <button
+                                onClick={() => {
+                                  setReportFormData({
+                                    route: `${fare.from} → ${fare.to}`,
+                                    vehicleType: fare.vehicleType,
+                                    officialPrice: fare.price,
+                                    priceCharged: '',
+                                    plateNumber: '',
+                                    notes: '',
+                                  });
+                                  setIsReportModalOpen(true);
+                                }}
+                                title="Report overcharge on this route"
+                                className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                              >
+                                <AlertCircle className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Admin edit/delete */}
+                              {isAdmin && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setModalMode('edit');
+                                      setEditingFare(fare);
+                                      setFormData({
+                                        from: fare.from,
+                                        to: fare.to,
+                                        vehicleType: fare.vehicleType,
+                                        price: String(fare.price),
+                                      });
+                                      setIsModalOpen(true);
+                                    }}
+                                    title="Edit Tariff"
+                                    className="p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded transition-colors"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteFare(fare.id)}
+                                    title="Delete Tariff"
+                                    className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </table>
-              </div>
-
-              {/* Table Footer */}
-              <div className="px-4 py-3 bg-stone-50 border-t border-stone-200 flex items-center justify-between text-xs text-stone-500">
-                <div>
-                  Showing <span className="font-semibold text-stone-900 font-mono tabular-nums">{processedFares.length}</span> of{' '}
-                  <span className="font-semibold text-stone-900 font-mono tabular-nums">{fares.length}</span> fares
-                </div>
-                <div className="flex items-center gap-3">
-                  <span>Standard regulated passenger rates</span>
-                </div>
               </div>
             </div>
           </section>
         )}
 
-        {/* ── TAB 2: ROUTE CALCULATOR ── */}
+        {/* ── TAB 2: ROUTE & STAGE CALCULATOR ── */}
         {activeTab === 'calculator' && (
-          <section className="space-y-8">
+          <section className="space-y-6">
             <div className="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 shadow-xs">
-              <div className="max-w-2xl">
-                <span className="text-xs font-semibold text-amber-700 tracking-wider uppercase">Interactive Fare Finder</span>
-                <h2 className="text-2xl font-bold text-stone-900 mt-1">Calculate route cost &amp; vehicle options</h2>
-                <p className="text-stone-600 text-sm mt-2">
-                  Select your departure locality and destination to view all direct transport tariffs and find the most economical option.
+              <div className="max-w-2xl space-y-1">
+                <span className="text-xs font-bold text-amber-700 tracking-wider uppercase">
+                  {t.calcTitle}
+                </span>
+                <h2 className="text-xl sm:text-2xl font-bold text-stone-900">{t.calcDesc}</h2>
+                <p className="text-xs text-stone-500">
+                  Automatic bidirectional search and multi-stage corridor connection finder.
                 </p>
               </div>
 
+              {/* Input Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">Departure Locality</label>
                   <select
                     value={calcFrom}
                     onChange={(e) => setCalcFrom(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900 font-medium focus:ring-1 focus:ring-stone-900 focus:bg-white"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs font-semibold text-stone-900"
                   >
                     {localities.map((loc) => (
                       <option key={loc} value={loc}>
@@ -732,7 +1045,7 @@ export default function App() {
                   <select
                     value={calcTo}
                     onChange={(e) => setCalcTo(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900 font-medium focus:ring-1 focus:ring-stone-900 focus:bg-white"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs font-semibold text-stone-900"
                   >
                     {localities.map((loc) => (
                       <option key={loc} value={loc}>
@@ -743,13 +1056,13 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">Preferred Vehicle</label>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Vehicle Class</label>
                   <select
                     value={calcVehicle}
                     onChange={(e) => setCalcVehicle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900 font-medium focus:ring-1 focus:ring-stone-900 focus:bg-white"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs font-semibold text-stone-900"
                   >
-                    <option value="All">All Vehicle Types</option>
+                    <option value="All">All Vehicle Classes</option>
                     {vehicleTypes.map((v) => (
                       <option key={v} value={v}>
                         {v}
@@ -759,7 +1072,8 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-stone-100 flex items-center justify-between">
+              {/* Swap Button */}
+              <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => {
@@ -767,106 +1081,85 @@ export default function App() {
                     setCalcFrom(calcTo);
                     setCalcTo(temp);
                   }}
-                  className="inline-flex items-center gap-1.5 text-xs text-stone-600 hover:text-stone-900 font-medium px-3 py-1.5 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs text-stone-600 hover:text-stone-900 font-semibold px-3 py-1.5 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Swap Origin &amp; Destination</span>
+                  <span>Swap Direction ({calcTo} ↔ {calcFrom})</span>
                 </button>
-
-                <span className="text-xs text-stone-500 font-mono tabular-nums">
-                  {routeMatches.length} available service{routeMatches.length === 1 ? '' : 's'}
+                <span className="text-xs text-stone-400 font-mono">
+                  {calcResult.direct.length} direct options · {calcResult.multiStage.length} transfer routes
                 </span>
               </div>
             </div>
 
-            {/* Results Grid */}
+            {/* Results: Direct Options */}
             <div className="space-y-4">
-              <h3 className="text-lg font-bold text-stone-900 flex items-center justify-between">
-                <span>Available Fares for {calcFrom} ↔ {calcTo}</span>
-                {routeMatches.length > 0 && (
-                  <span className="text-xs text-stone-500 font-normal">
-                    Lowest fare: <strong className="text-stone-900 font-mono tabular-nums">D{Math.min(...routeMatches.map(m => m.price))}</strong>
-                  </span>
-                )}
+              <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
+                <span>Direct Route Tariffs: {calcFrom} ↔ {calcTo}</span>
               </h3>
 
-              {calcFrom === calcTo ? (
-                <div className="p-8 bg-amber-50 border border-amber-200 rounded-xl text-center space-y-2">
-                  <AlertCircle className="w-6 h-6 text-amber-600 mx-auto" />
-                  <p className="font-semibold text-amber-900">Origin and Destination are identical</p>
-                  <p className="text-xs text-amber-700">Please choose distinct departure and arrival points.</p>
-                </div>
-              ) : routeMatches.length === 0 ? (
-                <div className="p-10 bg-white border border-stone-200 rounded-xl text-center space-y-4">
-                  <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto text-stone-500">
-                    <Navigation className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-stone-900">No direct recorded fare between {calcFrom} and {calcTo}</h4>
-                    <p className="text-xs text-stone-500 mt-1 max-w-md mx-auto">
-                      Transit on this corridor may require connecting through Serekunda or Brikama terminals, or you can register a new direct fare.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setFormData({
-                        from: calcFrom,
-                        to: calcTo,
-                        vehicleType: 'Taxi',
-                        price: '',
-                      });
-                      setModalMode('create');
-                      setIsModalOpen(true);
-                    }}
-                    className="px-4 py-2 text-xs font-semibold bg-stone-900 text-white rounded-lg hover:bg-stone-800"
-                  >
-                    Register This Route Fare
-                  </button>
+              {calcResult.direct.length === 0 ? (
+                <div className="p-6 bg-white border border-stone-200 rounded-xl text-center text-xs text-stone-500">
+                  No direct vehicle service recorded for this pair. Check transfer stage options below.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {routeMatches.map((match) => {
-                    const meta = getVehicleMeta(match.vehicleType);
-                    const isCheapest = match.price === Math.min(...routeMatches.map((m) => m.price));
+                  {calcResult.direct.map((item) => {
+                    const isLowest = item.price === Math.min(...calcResult.direct.map((m) => m.price));
                     return (
                       <div
-                        key={match.id}
-                        className={`bg-white border rounded-xl p-5 shadow-xs flex flex-col justify-between transition-all ${
-                          isCheapest ? 'border-amber-400 ring-1 ring-amber-400/20' : 'border-stone-200'
+                        key={item.id}
+                        className={`bg-white border rounded-xl p-5 shadow-xs flex flex-col justify-between ${
+                          isLowest ? 'border-amber-400 ring-1 ring-amber-400/20' : 'border-stone-200'
                         }`}
                       >
                         <div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={`text-xs px-2.5 py-0.5 rounded font-medium ${meta.bg}`}>
-                              {match.vehicleType}
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs px-2 py-0.5 rounded font-bold bg-stone-100 text-stone-800">
+                              {item.vehicleType}
                             </span>
-                            {isCheapest && (
-                              <span className="text-[10px] font-bold tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+                            {isLowest && (
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
                                 BEST VALUE
                               </span>
                             )}
                           </div>
-
                           <div className="mt-4">
                             <div className="text-3xl font-extrabold text-stone-900 font-mono tabular-nums">
-                              D{match.price}
+                              D{item.price}
                             </div>
-                            <span className="text-xs text-stone-400">Single Passenger Fare</span>
+                            <span className="text-[11px] text-stone-400">Fixed Passenger Tariff</span>
                           </div>
-
-                          <div className="mt-4 pt-3 border-t border-stone-100 text-xs text-stone-600 space-y-1">
-                            <p className="font-medium text-stone-800">{meta.desc}</p>
-                            <p className="text-stone-500">{match.from} to {match.to}</p>
-                          </div>
+                          {item.isBidirectional && (
+                            <span className="mt-2 text-[10px] text-stone-400 block">
+                              Reverse tariff match
+                            </span>
+                          )}
                         </div>
 
-                        <div className="mt-5 pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-400">
-                          <span className="font-mono">Fare #{match.id}</span>
+                        <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between">
                           <button
-                            onClick={() => openEditModal(match)}
-                            className="text-stone-700 hover:text-stone-900 font-medium underline"
+                            onClick={() => speakFare(item)}
+                            className="text-xs font-semibold text-stone-600 hover:text-stone-900 flex items-center gap-1"
                           >
-                            Update
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span>Audio</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setReportFormData({
+                                route: `${item.from} → ${item.to}`,
+                                vehicleType: item.vehicleType,
+                                officialPrice: item.price,
+                                priceCharged: '',
+                                plateNumber: '',
+                                notes: '',
+                              });
+                              setIsReportModalOpen(true);
+                            }}
+                            className="text-xs text-rose-600 hover:underline"
+                          >
+                            Report
                           </button>
                         </div>
                       </div>
@@ -875,322 +1168,386 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            {/* Results: Intermediate Multi-Stage Route Options */}
+            {calcResult.multiStage.length > 0 && (
+              <div className="space-y-4 pt-4 border-t border-stone-200">
+                <h3 className="text-base font-bold text-stone-900">
+                  Multi-Stage Transfer Options (via Intermediate Car Park Hubs)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {calcResult.multiStage.map((stage, idx) => (
+                    <div key={idx} className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded">
+                          Transfer at {stage.transferHub} Garage
+                        </span>
+                        <span className="text-xl font-bold font-mono tabular-nums text-stone-900">
+                          Total D{stage.totalPrice}
+                        </span>
+                      </div>
+                      <div className="space-y-2 text-xs text-stone-600">
+                        {stage.legs.map((leg, lIdx) => (
+                          <div key={lIdx} className="flex items-center justify-between bg-stone-50 p-2 rounded">
+                            <span>
+                              Leg {lIdx + 1}: {leg.from} → {leg.to} ({leg.vehicleType})
+                            </span>
+                            <span className="font-mono font-bold text-stone-900">D{leg.price}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-stone-400 italic">{stage.notes}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
 
-        {/* ── TAB 3: CORRIDORS & FLEET ── */}
-        {activeTab === 'corridors' && (
-          <section className="space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-              {/* Gelegele & Minibus Showcase */}
-              <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
-                <div className="h-64 sm:h-72 overflow-hidden bg-stone-100 relative">
-                  <img
-                    src={gelegeleVanImg}
-                    alt="Yellow Gelegele minivan at Serekunda terminal in The Gambia"
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-3 left-3 bg-stone-900/80 backdrop-blur-xs text-stone-100 text-xs px-2.5 py-1 rounded">
-                    Public Passenger Minibus Fleet
-                  </div>
-                </div>
-                <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-stone-900">Gelegele &amp; Town Taxis</h3>
-                    <p className="text-stone-600 text-sm mt-2 leading-relaxed">
-                      Gelegeles are the lifeblood of urban transit in the Greater Banjul Area, running high-frequency routes
-                      between coastal terminals, Westfield junction, and bustling market centers.
-                    </p>
-                  </div>
-                  <div className="pt-4 border-t border-stone-100 grid grid-cols-2 gap-4 text-xs text-stone-500">
-                    <div>
-                      <strong className="text-stone-900 block font-mono">D8 – D30</strong>
-                      <span>Average urban segment</span>
-                    </div>
-                    <div>
-                      <strong className="text-stone-900 block font-mono">14 – 18 Seats</strong>
-                      <span>Standard vehicle capacity</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Transit Map Showcase */}
-              <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
-                <div className="h-64 sm:h-72 overflow-hidden bg-stone-100 relative">
-                  <img
-                    src={routeMapImg}
-                    alt="Schematic map of The Gambia transit corridor"
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-3 left-3 bg-stone-900/80 backdrop-blur-xs text-stone-100 text-xs px-2.5 py-1 rounded">
-                    River &amp; Highway Corridors
-                  </div>
-                </div>
-                <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-stone-900">Trans-Gambia Highway Network</h3>
-                    <p className="text-stone-600 text-sm mt-2 leading-relaxed">
-                      Connecting Banjul via the south bank highway to Brikama, Soma, and the Senegambia Bridge crossing at Farafenni.
-                      Inter-division journeys rely on robust 7-seaters and GTSC long-distance bus coaches.
-                    </p>
-                  </div>
-                  <div className="pt-4 border-t border-stone-100 grid grid-cols-2 gap-4 text-xs text-stone-500">
-                    <div>
-                      <strong className="text-stone-900 block font-mono">Brikama ↔ Soma</strong>
-                      <span>D75 Bus / D400 Taxi</span>
-                    </div>
-                    <div>
-                      <strong className="text-stone-900 block font-mono">Soma ↔ Farafenni</strong>
-                      <span>D30 Gelegele / D40 Bus</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Vehicle Type Breakdown Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center font-bold text-xs">
-                  GL
-                </div>
-                <h4 className="font-bold text-stone-900 mt-3 text-base">Gelegele</h4>
-                <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-                  Shared minibuses for short, medium, and inter-town routes. Most economical option for daily commuters.
-                </p>
-                <div className="mt-3 pt-2 border-t border-stone-100 text-[11px] font-mono text-stone-600">
-                  Regulated flat fare
-                </div>
-              </div>
-
-              <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-900 flex items-center justify-center font-bold text-xs">
-                  TX
-                </div>
-                <h4 className="font-bold text-stone-900 mt-3 text-base">Town Taxi</h4>
-                <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-                  Yellow cabs offering direct chartered or shared door-to-door trips throughout municipal districts.
-                </p>
-                <div className="mt-3 pt-2 border-t border-stone-100 text-[11px] font-mono text-stone-600">
-                  Direct express travel
-                </div>
-              </div>
-
-              <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs">
-                <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-900 flex items-center justify-center font-bold text-xs">
-                  BS
-                </div>
-                <h4 className="font-bold text-stone-900 mt-3 text-base">GTSC Bus</h4>
-                <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-                  Government Transport Service Company coaches with fixed stops, scheduled departures, and comfortable transit.
-                </p>
-                <div className="mt-3 pt-2 border-t border-stone-100 text-[11px] font-mono text-stone-600">
-                  Air-conditioned coaches
-                </div>
-              </div>
-
-              <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs">
-                <div className="w-8 h-8 rounded-lg bg-stone-200 text-stone-900 flex items-center justify-center font-bold text-xs">
-                  7S
-                </div>
-                <h4 className="font-bold text-stone-900 mt-3 text-base">7-Seater</h4>
-                <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-                  Fast inter-provincial station wagons for medium to long-distance highway travel across divisions.
-                </p>
-                <div className="mt-3 pt-2 border-t border-stone-100 text-[11px] font-mono text-stone-600">
-                  Fixed luggage capacity
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ── TAB 4: API EXPLORER ── */}
-        {activeTab === 'api' && (
+        {/* ── TAB 3: CAR PARK & TERMINAL DIRECTORY ── */}
+        {activeTab === 'terminals' && (
           <section className="space-y-6">
-            <div className="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 shadow-xs">
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">REST Architecture</span>
-              <h2 className="text-2xl font-bold text-stone-900 mt-1">Live Backend Endpoints &amp; Integration</h2>
-              <p className="text-stone-600 text-sm mt-2 max-w-2xl leading-relaxed">
-                The Express backend provides clean REST endpoints with full input validation and structured error handling.
-                All data displayed in this application is live and persisted via the Node.js backend.
+            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-stone-900">Major Car Parks &amp; Transport Hubs</h2>
+                <p className="text-xs text-stone-500 mt-1 max-w-xl">
+                  Official garages, vehicle terminals, operating schedules, and facilities across The Gambia.
+                </p>
+              </div>
+              <span className="text-xs font-mono font-bold bg-stone-100 text-stone-700 px-3 py-1.5 rounded-lg">
+                6 Regulated Hubs
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {terminals.map((term) => (
+                <div key={term.id} className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs space-y-4 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">{term.region}</span>
+                      <span className="text-[11px] font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                        Active Terminal
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-stone-900">{term.name}</h3>
+                    <p className="text-xs text-stone-500 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 shrink-0 text-stone-400" />
+                      <span>{term.address}</span>
+                    </p>
+
+                    <div className="pt-2 border-t border-stone-100 space-y-1.5 text-xs text-stone-600">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-stone-400" />
+                        <span>Peak: {term.peakHours}</span>
+                      </div>
+                      <div className="text-[11px] text-stone-500">
+                        Hours: <strong>{term.operatingHours}</strong>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-stone-100">
+                      <span className="text-[11px] font-semibold text-stone-500 block mb-1">Key Corridors:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {term.connections.map((c, i) => (
+                          <span key={i} className="text-[11px] bg-stone-100 text-stone-700 px-2 py-0.5 rounded">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
+                    <button
+                      onClick={() => {
+                        setCalcFrom(term.town);
+                        setActiveTab('calculator');
+                      }}
+                      className="text-xs font-semibold text-stone-900 hover:text-amber-700 flex items-center gap-1"
+                    >
+                      <span>Check Fares from here</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── TAB 4: OVERCHARGE REPORTS FEED ── */}
+        {activeTab === 'reports' && (
+          <section className="space-y-6">
+            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-stone-900">Fare Overcharge &amp; Compliance Log</h2>
+                <p className="text-xs text-stone-500 mt-1 max-w-xl">
+                  Community reports submitted by passengers against unauthorized pricing and baggage surcharges.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsReportModalOpen(true)}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <AlertCircle className="w-4 h-4" />
+                <span>File New Complaint</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {reports.map((rep) => (
+                <div
+                  key={rep.id}
+                  className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-stone-400">Incident #{rep.id}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="text-xs font-bold text-stone-900">{rep.route}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-stone-100 text-stone-800">{rep.vehicleType}</span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          rep.status === 'Resolved' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+                        }`}
+                      >
+                        {rep.status}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-stone-600 flex flex-wrap items-center gap-3">
+                      <span>Vehicle Plate: <strong className="font-mono text-stone-900">{rep.plateNumber}</strong></span>
+                      <span aria-hidden="true">·</span>
+                      <span>Price Charged: <strong className="font-mono text-rose-700">D{rep.priceCharged}</strong></span>
+                      {rep.officialPrice && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span>Official Tariff: <strong className="font-mono text-stone-800">D{rep.officialPrice}</strong></span>
+                          <span aria-hidden="true">·</span>
+                          <span>Overcharge: <strong className="font-mono text-rose-700">+D{rep.overchargeAmount || (rep.priceCharged - rep.officialPrice)}</strong></span>
+                        </>
+                      )}
+                    </div>
+
+                    {rep.notes && <p className="text-xs text-stone-500 italic mt-1">"{rep.notes}"</p>}
+                    {rep.resolutionNote && (
+                      <p className="text-xs text-emerald-800 bg-emerald-50 p-2 rounded mt-2">
+                        <strong>Resolution Note:</strong> {rep.resolutionNote}
+                      </p>
+                    )}
+                  </div>
+
+                  {isAdmin && rep.status !== 'Resolved' && (
+                    <button
+                      onClick={() => handleResolveReport(rep.id)}
+                      className="px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors shrink-0"
+                    >
+                      Mark Resolved
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── TAB 5: USSD SIMULATOR (*144#) ── */}
+        {activeTab === 'ussd' && (
+          <section className="space-y-6">
+            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs">
+              <h2 className="text-xl font-bold text-stone-900">Feature Phone USSD Simulator (*144#)</h2>
+              <p className="text-xs text-stone-500 mt-1 max-w-xl">
+                Test how commuters without smartphones look up tariffs on standard 2G/GSM feature phones via telecom USSD menus.
               </p>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <div className="border border-stone-200 rounded-xl p-4 bg-stone-50 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                      GET /api/fares
-                    </span>
-                    <a
-                      href="/api/fares"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-stone-500 hover:text-stone-900 inline-flex items-center gap-1"
-                    >
-                      <span>Open JSON</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                  <p className="text-xs text-stone-600">
-                    Retrieves full list of fares with count and metadata.
-                  </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+              {/* Retro Phone Display */}
+              <div className="bg-stone-900 rounded-3xl p-6 text-stone-100 shadow-xl max-w-sm mx-auto w-full space-y-4">
+                <div className="flex items-center justify-between text-[11px] text-stone-400 font-mono">
+                  <span>GAMCEL / AFRICELL</span>
+                  <span>4G / 2G USSD</span>
                 </div>
 
-                <div className="border border-stone-200 rounded-xl p-4 bg-stone-50 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                      GET /api/stats
-                    </span>
-                    <a
-                      href="/api/stats"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-stone-500 hover:text-stone-900 inline-flex items-center gap-1"
-                    >
-                      <span>Open JSON</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                {/* LCD Screen */}
+                <div className="bg-emerald-950/90 border border-emerald-800 rounded-xl p-4 min-h-[170px] font-mono text-xs text-emerald-300 whitespace-pre-line flex flex-col justify-between">
+                  <div>{ussdScreen}</div>
+                  <div className="text-[10px] text-emerald-500 border-t border-emerald-900 pt-1 mt-2">
+                    Press send / reply
                   </div>
-                  <p className="text-xs text-stone-600">
-                    Calculates average price, cheapest vehicle class, and highest tariff.
-                  </p>
                 </div>
 
-                <div className="border border-stone-200 rounded-xl p-4 bg-stone-50 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                      GET /api/localities
-                    </span>
-                    <a
-                      href="/api/localities"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-stone-500 hover:text-stone-900 inline-flex items-center gap-1"
+                {/* Input and Keypad */}
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={ussdInput}
+                      onChange={(e) => setUssdInput(e.target.value)}
+                      placeholder="e.g. *144#, 1*1*2"
+                      className="flex-1 bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none"
+                    />
+                    <button
+                      onClick={() => handleUssdDial()}
+                      disabled={ussdLoading}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-stone-950 font-bold rounded-lg text-xs"
                     >
-                      <span>Open JSON</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                      {ussdLoading ? '...' : 'SEND'}
+                    </button>
                   </div>
-                  <p className="text-xs text-stone-600">
-                    Returns dynamically computed unique list of all connected hubs.
-                  </p>
-                </div>
 
-                <div className="border border-stone-200 rounded-xl p-4 bg-stone-50 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                      GET /api/vehicle-types
-                    </span>
-                    <a
-                      href="/api/vehicle-types"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-stone-500 hover:text-stone-900 inline-flex items-center gap-1"
+                  {/* Preset Shortcuts */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 text-[10px] font-mono">
+                    <button
+                      onClick={() => handleUssdDial('*144#')}
+                      className="p-2 bg-stone-800 hover:bg-stone-700 rounded text-center text-stone-200"
                     >
-                      <span>Open JSON</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                      Dial *144#
+                    </button>
+                    <button
+                      onClick={() => handleUssdDial('1*1*2')}
+                      className="p-2 bg-stone-800 hover:bg-stone-700 rounded text-center text-stone-200"
+                    >
+                      Banjul → Ser.
+                    </button>
+                    <button
+                      onClick={() => handleUssdDial('1*2*3')}
+                      className="p-2 bg-stone-800 hover:bg-stone-700 rounded text-center text-stone-200"
+                    >
+                      Ser. → Brikama
+                    </button>
                   </div>
-                  <p className="text-xs text-stone-600">
-                    Returns valid vehicle classes supported by the tariff authority.
-                  </p>
                 </div>
               </div>
+
+              {/* USSD Architecture Explanation */}
+              <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-4">
+                <h3 className="text-base font-bold text-stone-900">How USSD Inclusion Works in The Gambia</h3>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  Over 40% of public transport passengers and commercial vehicle drivers in provincial areas use basic feature phones.
+                  The PASSO API powers telecom gateway integration so dialing <strong>*144#</strong> returns the exact gazetted tariff
+                  in under 2 seconds without requiring an internet data bundle.
+                </p>
+                <div className="p-3 bg-stone-50 border border-stone-200 rounded-lg text-xs space-y-1 font-mono">
+                  <div>POST /api/ussd</div>
+                  <div className="text-stone-500">Payload: {`{ text: "*144*1*2#" }`}</div>
+                  <div className="text-emerald-700">Output: Official Fares Banjul to Serekunda: Bus D15, Gelegele D12, Taxi D100</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── TAB 6: GAZETTE REVISIONS & CIRCULARS ── */}
+        {activeTab === 'revisions' && (
+          <section className="space-y-6">
+            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs">
+              <h2 className="text-xl font-bold text-stone-900">Official Regulatory Circulars &amp; Gazette Revisions</h2>
+              <p className="text-xs text-stone-500 mt-1 max-w-xl">
+                Legal instruments and joint transport union agreements establishing commercial passenger tariffs.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {revisions.map((rev) => (
+                <div key={rev.id} className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
+                      {rev.revisionRef}
+                    </span>
+                    <span className="text-xs font-semibold text-stone-500">Effective: {rev.effectiveDate}</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-stone-900">{rev.title}</h3>
+                  <div className="text-xs text-stone-600">
+                    Authority: <strong>{rev.issuingAuthority}</strong>
+                  </div>
+                  <p className="text-xs text-stone-600 leading-relaxed">{rev.summary}</p>
+                  <div className="pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
+                    <span className="font-mono text-stone-500">{rev.gazetteNotice}</span>
+                    <span className="text-emerald-700 font-bold">{rev.status}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         )}
       </main>
 
       {/* ── FOOTER ── */}
-      <footer className="mt-16 border-t border-stone-200 bg-white py-8 px-6 text-xs text-stone-500">
+      <footer className="mt-16 border-t border-stone-200 bg-white py-8 px-6 text-xs text-stone-500 print:hidden">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-stone-900">PASSO Transport Directory</span>
+            <span className="font-bold text-stone-900">PASSO Gambia Transit</span>
             <span aria-hidden="true">·</span>
-            <span>The Gambia</span>
+            <span>MOTWI Regulated Tariffs</span>
             <span aria-hidden="true">·</span>
-            <span>All tariffs in Gambian Dalasis (GMD)</span>
+            <span>All figures in Gambian Dalasis (GMD)</span>
           </div>
-          <div>
-            <span>Connected to Express API running on port 3000</span>
+          <div className="flex items-center gap-4">
+            <button onClick={handlePrintTariff} className="hover:underline flex items-center gap-1">
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print A4 Tariff Sheet</span>
+            </button>
+            <span>Express Backend Port 3000</span>
           </div>
         </div>
       </footer>
 
-      {/* ── CREATE / EDIT FARE MODAL ── */}
+      {/* ── MODAL 1: ADD / EDIT FARE (Admin Protected) ── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-xl max-w-md w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-stone-900">
-                  {modalMode === 'create' ? 'Register New Route Fare' : `Update Fare #${editingFare?.id}`}
-                </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Enter official passenger tariff details
-                </p>
-              </div>
-              <button
-                onClick={closeModal}
-                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100 transition-colors"
-              >
+              <h3 className="text-base font-bold text-stone-900">
+                {modalMode === 'create' ? 'Register New Route Tariff' : `Update Tariff #${editingFare?.id}`}
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="p-1 text-stone-400 hover:text-stone-700">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {formErrors.length > 0 && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 space-y-1">
                 {formErrors.map((err, i) => (
-                  <p key={i} className="text-xs text-rose-700 flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{err}</span>
-                  </p>
+                  <div key={i}>• {err}</div>
                 ))}
               </div>
             )}
 
-            <form onSubmit={handleFormSubmit} className="space-y-4">
+            <form onSubmit={handleFareFormSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Departure Locality (From)
-                </label>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Departure Locality (From)</label>
                 <input
                   type="text"
-                  placeholder="e.g. Banjul, Serekunda, Brikama"
                   value={formData.from}
                   onChange={(e) => setFormData({ ...formData, from: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-900 focus:bg-white text-stone-900"
+                  placeholder="e.g. Banjul, Serekunda"
+                  className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-900"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Destination Locality (To)
-                </label>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Destination Locality (To)</label>
                 <input
                   type="text"
-                  placeholder="e.g. Serekunda, Lamin, Soma"
                   value={formData.to}
                   onChange={(e) => setFormData({ ...formData, to: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-900 focus:bg-white text-stone-900"
+                  placeholder="e.g. Serekunda, Brikama"
+                  className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-900"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Vehicle Type
-                  </label>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Vehicle Class</label>
                   <select
                     value={formData.vehicleType}
                     onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-900 focus:bg-white text-stone-900"
+                    className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg"
                   >
                     {vehicleTypes.map((v) => (
                       <option key={v} value={v}>
@@ -1199,23 +1556,20 @@ export default function App() {
                     ))}
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Fare Price (GMD)
-                  </label>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Price (GMD)</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-stone-500">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-stone-400">
                       D
                     </span>
                     <input
                       type="number"
                       min="1"
                       step="any"
-                      placeholder="e.g. 25"
                       value={formData.price}
                       onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="w-full pl-8 pr-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-900 focus:bg-white text-stone-900 font-mono tabular-nums"
+                      className="w-full pl-7 pr-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg font-mono font-bold"
+                      placeholder="e.g. 25"
                       required
                     />
                   </div>
@@ -1225,17 +1579,185 @@ export default function App() {
               <div className="pt-3 border-t border-stone-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={closeModal}
-                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-3 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-stone-900 hover:bg-stone-800 rounded-lg"
                 >
-                  {isSubmitting ? 'Saving...' : modalMode === 'create' ? 'Register Fare' : 'Save Changes'}
+                  {isSubmitting ? 'Saving...' : 'Publish Tariff'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 2: ADMIN PASSKEY LOGIN ── */}
+      {isAdminModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-xl max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-amber-700" />
+                <h3 className="text-base font-bold text-stone-900">Officer Passkey Login</h3>
+              </div>
+              <button onClick={() => setIsAdminModalOpen(false)} className="p-1 text-stone-400 hover:text-stone-700">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-stone-500">
+              Enter official Ministry / GTU authority passkey to unlock tariff editing and complaint resolution privileges.
+            </p>
+
+            {authError && <div className="p-2 bg-rose-50 text-rose-700 text-xs rounded border border-rose-200">{authError}</div>}
+
+            <form onSubmit={handleAdminLogin} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Passkey</label>
+                <input
+                  type="password"
+                  value={passkeyInput}
+                  onChange={(e) => setPasskeyInput(e.target.value)}
+                  placeholder="passo-admin-2026 or gambia2026"
+                  className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg font-mono"
+                  required
+                />
+                <span className="text-[10px] text-stone-400 mt-1 block">Default passkey: passo-admin-2026</span>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAdminModalOpen(false)}
+                  className="px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-stone-900 hover:bg-stone-800 rounded-lg"
+                >
+                  Unlock Admin
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 3: REPORT OVERCHARGE ── */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+                <h3 className="text-base font-bold text-stone-900">Report Fare Overcharge</h3>
+              </div>
+              <button onClick={() => setIsReportModalOpen(false)} className="p-1 text-stone-400 hover:text-stone-700">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-stone-500">
+              Submit overcharging incidents directly to the Transport Union and MOTWI Traffic Inspection Desk.
+            </p>
+
+            <form onSubmit={handleReportSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Route Taken</label>
+                <input
+                  type="text"
+                  value={reportFormData.route}
+                  onChange={(e) => setReportFormData({ ...reportFormData, route: e.target.value })}
+                  placeholder="e.g. Serekunda to Brikama"
+                  className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Vehicle Type</label>
+                  <select
+                    value={reportFormData.vehicleType}
+                    onChange={(e) => setReportFormData({ ...reportFormData, vehicleType: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg"
+                  >
+                    {vehicleTypes.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Plate Number</label>
+                  <input
+                    type="text"
+                    value={reportFormData.plateNumber}
+                    onChange={(e) => setReportFormData({ ...reportFormData, plateNumber: e.target.value })}
+                    placeholder="e.g. BJL 1234 A"
+                    className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg font-mono uppercase"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Official Tariff (GMD)</label>
+                  <input
+                    type="number"
+                    value={reportFormData.officialPrice}
+                    onChange={(e) => setReportFormData({ ...reportFormData, officialPrice: e.target.value })}
+                    placeholder="e.g. 15"
+                    className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Price Charged (GMD)</label>
+                  <input
+                    type="number"
+                    value={reportFormData.priceCharged}
+                    onChange={(e) => setReportFormData({ ...reportFormData, priceCharged: e.target.value })}
+                    placeholder="e.g. 25"
+                    className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg font-mono font-bold text-rose-700"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">Incident Notes</label>
+                <textarea
+                  value={reportFormData.notes}
+                  onChange={(e) => setReportFormData({ ...reportFormData, notes: e.target.value })}
+                  placeholder="Describe location, rain surcharge, or baggage dispute..."
+                  rows={2}
+                  className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsReportModalOpen(false)}
+                  className="px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reportSubmitting}
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 rounded-lg"
+                >
+                  {reportSubmitting ? 'Submitting...' : 'Submit Complaint'}
                 </button>
               </div>
             </form>

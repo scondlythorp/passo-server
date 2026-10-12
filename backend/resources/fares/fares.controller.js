@@ -132,6 +132,19 @@ function getStats(req, res, next) {
   }
 }
 
+function calculateRoute(req, res, next) {
+  try {
+    const { from, to, vehicleType = 'All' } = req.query;
+    if (!from || !to) {
+      return res.status(400).json({ error: 'Both "from" and "to" query parameters are required.' });
+    }
+    const result = db.calculateRoute(from, to, vehicleType);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getAllFares,
   getFareById,
@@ -139,4 +152,5 @@ module.exports = {
   updateFare,
   deleteFare,
   getStats,
+  calculateRoute,
 };

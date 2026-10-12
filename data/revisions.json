@@ -1,0 +1,24 @@
+[
+  {
+    "id": "rev-2026-01",
+    "revisionRef": "MOTWI-2026-A",
+    "title": "2026 National Commercial Passenger Transport Tariff Revision",
+    "gazetteNotice": "The Gambia Gazette Vol. 143 No. 02",
+    "effectiveDate": "2026-01-15",
+    "issuingAuthority": "Ministry of Transport, Works and Infrastructure (MOTWI) & The Gambia Transport Union (GTU)",
+    "summary": "Formal harmonized tariff structure across Greater Banjul, West Coast, and Trans-Gambia corridor covering Gelegele, Taxi, 7-Seater, and GTSC buses.",
+    "status": "Active & Legally Binding",
+    "pdfDocRef": "MOTWI_TARIFF_CIRCULAR_2026_01.pdf"
+  },
+  {
+    "id": "rev-2025-02",
+    "revisionRef": "MOTWI-2025-B",
+    "title": "Trans-Gambia Senegambia Bridge Corridor Tariff Update",
+    "gazetteNotice": "The Gambia Gazette Vol. 142 No. 29",
+    "effectiveDate": "2025-08-01",
+    "issuingAuthority": "MOTWI & Gambia Transport Service Company",
+    "summary": "Standardization of bus and 7-seater tariffs between Brikama, Soma, and Farafenni following bridge toll adjustment.",
+    "status": "Superseded",
+    "pdfDocRef": "MOTWI_TARIFF_CIRCULAR_2025_02.pdf"
+  }
+]

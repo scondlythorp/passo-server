@@ -1,0 +1,40 @@
+[
+  {
+    "id": 3,
+    "route": "Banjul to Serekunda",
+    "vehicleType": "Taxi",
+    "officialPrice": 100,
+    "priceCharged": 130,
+    "overchargeAmount": 30,
+    "plateNumber": "BJL 9901 C",
+    "dateTime": "2026-10-12T02:56:22.753Z",
+    "notes": "Excess charge test",
+    "status": "Under Review",
+    "reportedBy": "Commuter Feedback"
+  },
+  {
+    "id": 1,
+    "route": "Banjul → Serekunda",
+    "vehicleType": "Taxi",
+    "officialPrice": 100,
+    "priceCharged": 150,
+    "plateNumber": "BJL 4482 D",
+    "dateTime": "2026-10-10T18:45:00.000Z",
+    "notes": "Driver insisted on peak-rush surcharge during rain near Westfield roundabout.",
+    "status": "Under Review",
+    "reportedBy": "Commuter"
+  },
+  {
+    "id": 2,
+    "route": "Serekunda → Brikama",
+    "vehicleType": "Gelegele",
+    "officialPrice": 15,
+    "priceCharged": 25,
+    "plateNumber": "WCR 8109 B",
+    "dateTime": "2026-10-11T08:15:00.000Z",
+    "notes": "Apprentice demanded extra 10 Dalasis for small handbag in luggage rack.",
+    "status": "Resolved",
+    "resolutionNote": "Car park master cautioned driver; 10 Dalasi refund noted.",
+    "reportedBy": "Commuter"
+  }
+]

@@ -1,0 +1,80 @@
+[
+  {
+    "id": "banjul-albert",
+    "name": "Albert Market Central Terminal",
+    "town": "Banjul",
+    "region": "Greater Banjul Area",
+    "address": "Russell St / Commercial Ave, Banjul",
+    "coordinates": { "lat": 13.4549, "lng": -16.579 },
+    "peakHours": "06:30 - 09:30 & 16:30 - 19:30",
+    "operatingHours": "05:00 - 23:00 Daily",
+    "connections": ["Serekunda", "Brikama", "Barra (Ferry)"],
+    "supportedVehicles": ["Bus", "Gelegele", "Taxi"],
+    "facilities": ["Covered Waiting Shed", "Water Station", "Police Post", "Ferry Link"]
+  },
+  {
+    "id": "serekunda-westfield",
+    "name": "Westfield Junction Transport Hub",
+    "town": "Serekunda",
+    "region": "Kanifing Municipal Council",
+    "address": "Kairaba Ave at Westfield Monument",
+    "coordinates": { "lat": 13.4385, "lng": -16.6749 },
+    "peakHours": "07:00 - 10:00 & 17:00 - 20:30",
+    "operatingHours": "24/7 Continuous Service",
+    "connections": ["Banjul", "Brikama", "Lamin", "Bakau", "Senegambia", "Soma"],
+    "supportedVehicles": ["Gelegele", "Taxi", "Bus", "7-Seater"],
+    "facilities": ["Mosque / Prayer Area", "Mobile Money Agents", "Food Canteens", "Taxi Stand"]
+  },
+  {
+    "id": "brikama-garage",
+    "name": "Brikama Central Car Park",
+    "town": "Brikama",
+    "region": "West Coast Division",
+    "address": "Gambia College Main Road, Brikama",
+    "coordinates": { "lat": 13.2714, "lng": -16.6493 },
+    "peakHours": "06:00 - 09:00 & 16:00 - 19:00",
+    "operatingHours": "05:00 - 22:00 Daily",
+    "connections": ["Serekunda", "Banjul", "Lamin", "Soma", "Gunjur", "Kartong"],
+    "supportedVehicles": ["Bus", "7-Seater", "Gelegele", "Taxi"],
+    "facilities": ["Ticket Office", "Restrooms", "Union Inspector Desk", "Shaded Benches"]
+  },
+  {
+    "id": "soma-junction",
+    "name": "Soma Trans-Gambia Crossing Hub",
+    "town": "Soma",
+    "region": "Lower River Division",
+    "address": "South Bank Road at Senegambia Bridge Junction",
+    "coordinates": { "lat": 13.4333, "lng": -15.5333 },
+    "peakHours": "08:00 - 12:00 & 15:00 - 18:30",
+    "operatingHours": "06:00 - 21:00 Daily",
+    "connections": ["Brikama", "Farafenni (Bridge)", "Janjanbureh", "Basse"],
+    "supportedVehicles": ["Bus", "7-Seater", "Taxi"],
+    "facilities": ["Bridge Toll Link", "Catering & Snacks", "Fuel Station", "Restrooms"]
+  },
+  {
+    "id": "farafenni-terminal",
+    "name": "Farafenni North Bank Border Garage",
+    "town": "Farafenni",
+    "region": "North Bank Division",
+    "address": "Trans-Gambia North Highway, Farafenni",
+    "coordinates": { "lat": 13.5667, "lng": -15.6000 },
+    "peakHours": "07:30 - 11:00 & 14:30 - 17:30",
+    "operatingHours": "06:00 - 20:00 Daily",
+    "connections": ["Soma", "Barra", "Kerewan", "Senegal Border"],
+    "supportedVehicles": ["Bus", "7-Seater", "Gelegele"],
+    "facilities": ["Customs / Immigration Post", "Currency Exchange", "Covered Stalls"]
+  },
+  {
+    "id": "lamin-garage",
+    "name": "Lamin Highway Junction Garage",
+    "town": "Lamin",
+    "region": "West Coast Division",
+    "address": "Banjul Airport Highway at Lamin Lodge turnoff",
+    "coordinates": { "lat": 13.3872, "lng": -16.6389 },
+    "peakHours": "06:30 - 09:00 & 17:00 - 19:30",
+    "operatingHours": "05:30 - 22:00 Daily",
+    "connections": ["Serekunda", "Brikama", "Airport"],
+    "supportedVehicles": ["Gelegele", "Taxi", "7-Seater"],
+    "facilities": ["Mini Market", "Phone Charging Booth", "Sheltered Bay"]
+  }
+]

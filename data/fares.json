@@ -1,0 +1,22 @@
+[
+  { "id": 1, "from": "Banjul", "to": "Serekunda", "vehicleType": "Bus", "price": 15, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 2, "from": "Banjul", "to": "Serekunda", "vehicleType": "Gelegele", "price": 12, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 3, "from": "Banjul", "to": "Serekunda", "vehicleType": "7-Seater", "price": 18, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 4, "from": "Banjul", "to": "Serekunda", "vehicleType": "Taxi", "price": 100, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 5, "from": "Serekunda", "to": "Brikama", "vehicleType": "Bus", "price": 20, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 6, "from": "Serekunda", "to": "Brikama", "vehicleType": "Gelegele", "price": 15, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 7, "from": "Serekunda", "to": "Brikama", "vehicleType": "7-Seater", "price": 22, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 8, "from": "Serekunda", "to": "Brikama", "vehicleType": "Taxi", "price": 150, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 9, "from": "Brikama", "to": "Soma", "vehicleType": "Bus", "price": 75, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 10, "from": "Brikama", "to": "Soma", "vehicleType": "7-Seater", "price": 90, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 11, "from": "Brikama", "to": "Soma", "vehicleType": "Taxi", "price": 400, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 12, "from": "Soma", "to": "Farafenni", "vehicleType": "Bus", "price": 40, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 13, "from": "Soma", "to": "Farafenni", "vehicleType": "Gelegele", "price": 30, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 14, "from": "Soma", "to": "Farafenni", "vehicleType": "7-Seater", "price": 50, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 15, "from": "Serekunda", "to": "Lamin", "vehicleType": "Gelegele", "price": 10, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 16, "from": "Serekunda", "to": "Lamin", "vehicleType": "7-Seater", "price": 13, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 17, "from": "Serekunda", "to": "Lamin", "vehicleType": "Taxi", "price": 80, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 18, "from": "Banjul", "to": "Brikama", "vehicleType": "Bus", "price": 30, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 19, "from": "Banjul", "to": "Brikama", "vehicleType": "Taxi", "price": 200, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" },
+  { "id": 20, "from": "Lamin", "to": "Brikama", "vehicleType": "Gelegele", "price": 8, "stage": "Direct", "revisionRef": "MOTWI-2026-A", "effectiveDate": "2026-01-15" }
+]
