@@ -1,20 +1,20 @@
 ### GET all localities
-GET http://localhost:4003/api/localities
+GET http://localhost:3000/api/localities
 
 ### GET vehicle types
-GET http://localhost:4003/api/vehicle-types
+GET http://localhost:3000/api/vehicle-types
 
 ### GET stats
-GET http://localhost:4003/api/stats
+GET http://localhost:3000/api/stats
 
 ### GET all fares
-GET http://localhost:4003/api/fares
+GET http://localhost:3000/api/fares
 
 ### GET fare by id
-GET http://localhost:4003/api/fares/1
+GET http://localhost:3000/api/fares/1
 
 ### Create a new fare
-POST http://localhost:4003/api/fares
+POST http://localhost:3000/api/fares
 Content-Type: application/json
 
 {
@@ -25,7 +25,7 @@ Content-Type: application/json
 }
 
 ### Update the newly created fare (id 21 expected)
-PUT http://localhost:4003/api/fares/21
+PUT http://localhost:3000/api/fares/21
 Content-Type: application/json
 
 {
@@ -33,4 +33,4 @@ Content-Type: application/json
 }
 
 ### Delete the newly created fare (id 21 expected)
-DELETE http://localhost:4003/api/fares/21
+DELETE http://localhost:3000/api/fares/21

@@ -1,0 +1,7 @@
+{
+  "name": "PASSO Transport Fare Directory",
+  "description": "Transport fare directory, route calculator, and management system for The Gambia",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

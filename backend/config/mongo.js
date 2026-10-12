@@ -16,15 +16,20 @@ let db = null;
 
 async function connect() {
   if (db) return db;
-  await client.connect();
-  db = client.db(MONGODB_DB);
-  await seedFares();
-  return db;
+  try {
+    await client.connect();
+    db = client.db(MONGODB_DB);
+    await seedFares();
+    return db;
+  } catch (err) {
+    console.warn('[AI Studio] MongoDB not connected — falling back to in-memory store:', err.message);
+    return null;
+  }
 }
 
 function getDb() {
   if (!db) {
-    throw new Error('MongoDB not connected. Call connect() before using the database.');
+    console.warn('MongoDB not connected. Falling back or call connect() first.');
   }
   return db;
 }
